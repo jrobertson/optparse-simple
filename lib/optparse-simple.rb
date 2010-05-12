@@ -5,12 +5,27 @@ class OptParseSimple
 
   def initialize(filename, args)
     doc = Document.new(File.open(filename,'r').read)
+    
+    # -- bind any loose value to their argument
+    xpath = 'records/option/summary[switch != "" and value != ""]'
+    options = XPath.match(doc.root, xpath)
+        .map {|node|  %w(switch alias)
+          .map{|x| node.text(x)}.compact}
+        .flatten
+    args.map!.with_index do |x,i|
+      next unless x or i < args.length - 1
+      (x += '=' + args[i+1]; args[i+1] = nil) if options.include?(x)
+      x
+    end
+    args.compact!        
+    # -- end of bind any loose value to their argument
+    
     @options = XPath.match(doc.root, 'records/option[summary/switch!=""]')
 
     switches = @options.map do |option| 
       switch = option.text('summary/switch')
       switch[0] == '-' ? switch : nil
-    end
+    end    
 
     switches.compact!
 
