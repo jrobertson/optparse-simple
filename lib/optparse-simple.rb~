@@ -1,27 +1,26 @@
 require 'rexml/document'
-require 'table-formatter'
 include REXML
 
 class OptParseSimple
 
-  def initialize(s)    
-    super()
+  def initialize(filename, args)
+    doc = Document.new(File.open(filename,'r').read)
     
-    if s[/^https?:\/\//] then  # url
-      buffer = Kernel.open(s, 'UserAgent' => 'Polyrex-Reader').read
-    elsif s[/\</] # xml
-      buffer = s
-    else # local file
-      buffer = File.open(s,'r').read
+    # -- bind any loose value to their argument
+    xpath = 'records/option/summary[switch != "" and value != ""]'
+    options = XPath.match(doc.root, xpath)\
+        .map {|node|  %w(switch alias)\
+          .map{|x| node.text(x)}.compact}\
+        .flatten
+    args.map!.with_index do |x,i|
+      next unless x or i < args.length - 1
+      (x += '=' + args[i+1]; args[i+1] = nil) if options.include?(x)
+      x
     end
+    args.compact!        
+    # -- end of bind any loose value to their argument
     
-    @doc = Document.new(buffer)    
-    
-  end
-  
-  def parse(args)
-    
-    @options = XPath.match(@doc.root, 'records/option[summary/switch!=""]')
+    @options = XPath.match(doc.root, 'records/option[summary/switch!=""]')
 
     switches = @options.map do |option| 
       switch = option.text('summary/switch')
@@ -42,22 +41,8 @@ class OptParseSimple
 
     args.flatten!
 
-    # -- bind any loose value to their argument
-    xpath = 'records/option/summary[switch != "" and value != ""]'
-    options = XPath.match(@doc.root, xpath)\
-        .map {|node|  %w(switch alias)\
-          .map{|x| node.text(x)}.compact}\
-        .flatten
-    args.map!.with_index do |x,i|
-      next unless x or i < args.length - 1
-      (x += '=' + args[i+1]; args[i+1] = nil) if options.include?(x)
-      x
-    end
-    args.compact!        
-    # -- end of bind any loose value to their argument
-
     a1 = options_match(@options[0], args).flatten.each_slice(2).map {|x| x if x[0]}.compact
-    options_remaining = XPath.match(@doc.root, 'records/option/summary[switch=""]/name/text()')
+    options_remaining = XPath.match(doc.root, 'records/option/summary[switch=""]/name/text()')
     a2 = args.zip(options_remaining).map(&:reverse)
     if a2.map(&:first).all? then
       @h = Hash[*(a1+a2).map{|x,y| [x.to_s.to_sym, y]}.flatten]
@@ -65,19 +50,10 @@ class OptParseSimple
       invalid_option = a2.detect {|x,y| x.nil? }.last
       raise "invalid option: %s not recognised" % invalid_option
     end
-    self
   end
 
   def to_h()
     @h
-  end
-  
-  def help    
-    a = XPath.match(@doc.root,  'records/option/summary').map do |summary|
-      %w(switch alias).map {|x| summary.text x}
-    end
-    puts 'options:'
-    puts TableFormatter.new(source: a, border: false).to_s
   end
 
   private
