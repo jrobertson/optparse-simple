@@ -62,7 +62,14 @@ class OptParseSimple
 
     a1 = []
     a1 = options_match(@options[0], args).flatten.each_slice(2).map {|x| x if x[0]}.compact unless @options.empty?
-    options_remaining = XPath.match(@doc.root, 'records/option/summary[switch=""]/name/text()')
+    options_remaining = XPath.match(@doc.root, 'records/option/summary[switch=""]/name/text()').map(&:to_s)
+    mandatory_remaining  = XPath.match(@doc.root, 'records/option/summary[switch="" and mandatory="true"]/name/text()').map(&:to_s)
+    if mandatory_remaining.length > args.length then
+       missing_arg = (mandatory_remaining - args).first
+       option = XPath.first(@doc.root, "records/option[summary/name='#{missing_arg}']")
+       raise option.text('records/error/summary/msg')
+    end
+    
     a2 = args.zip(options_remaining).map(&:reverse)
     if a2.map(&:first).all? then
       @h = Hash[*(a1+a2).map{|x,y| [x.to_s.to_sym, y]}.flatten]
