@@ -1,3 +1,7 @@
+#!/usr/bin/ruby
+
+# file: optparse-simple.rb
+
 require 'rexml/document'
 require 'table-formatter'
 include REXML
@@ -56,7 +60,8 @@ class OptParseSimple
     args.compact!        
     # -- end of bind any loose value to their argument
 
-    a1 = options_match(@options[0], args).flatten.each_slice(2).map {|x| x if x[0]}.compact
+    a1 = []
+    a1 = options_match(@options[0], args).flatten.each_slice(2).map {|x| x if x[0]}.compact unless @options.empty?
     options_remaining = XPath.match(@doc.root, 'records/option/summary[switch=""]/name/text()')
     a2 = args.zip(options_remaining).map(&:reverse)
     if a2.map(&:first).all? then
@@ -65,7 +70,7 @@ class OptParseSimple
       invalid_option = a2.detect {|x,y| x.nil? }.last
       raise "invalid option: %s not recognised" % invalid_option
     end
-    self
+    @h
   end
 
   def to_h()
@@ -73,7 +78,7 @@ class OptParseSimple
   end
   
   def help    
-    a = XPath.match(@doc.root,  'records/option/summary').map do |summary|
+    a = XPath.match(@doc.root,  "records/option/summary[switch != '']").map do |summary|
       %w(switch alias).map {|x| summary.text x}
     end
     puts 'options:'
