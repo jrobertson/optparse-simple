@@ -1,0 +1,34 @@
+README
+
+last updated: 26-Oct-2010
+
+*installation*
+sudo gem1.9.1 install table-formatter
+sudo gem1.9.1 install optparse-simple
+
+*recommended installation*
+sudo gem1.9.1 install polyrex
+
+
+Here's a quick start example:
+
+require 'optparse-simple'
+require 'polyrex'
+
+polyrex = Polyrex.new('options/option[name,switch,alias,value,mandatory]/error[msg]')
+
+options =<<OPTIONS
+username -u --username \\w+ true
+  invalid username
+  you must enter a username
+password -p --pasword \\w+ true
+  invalid password
+  you must enter a password
+keyword   [\\w\+]+ true
+  invalid keyword
+  you must enter a keyword e.g. --keyword=ruby
+OPTIONS
+
+args = %w(-u james -p secret fun)
+params = OptParseSimple.new(polyrex.parse(options).to_xml).parse(args)
+#=> {:username=>"james", :password=>"secret", :keyword=>"fun"}

@@ -72,7 +72,7 @@ class OptParseSimple
     
     a2 = args.zip(options_remaining).map(&:reverse)
     if a2.map(&:first).all? then
-      @h = Hash[*(a1+a2).map{|x,y| [x.to_s.to_sym, y]}.flatten]
+      @h = Hash[*(a1+a2).map{|x,y| [x.to_s.strip.to_sym, y]}.flatten]
     else
       invalid_option = a2.detect {|x,y| x.nil? }.last
       raise "invalid option: %s not recognised" % invalid_option
