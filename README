@@ -10,33 +10,33 @@ Examples
 ========
 Here's a quick start example:
 
-    require 'optparse-simple'
+require 'optparse-simple'
 
-    options =<<EOF
-    dxxx -d --dxxx n/a false 
-    idxxx n/a n/a \\w+ false
-    EOF
+options =<<EOF
+dxxx -d --dxxx n/a false 
+idxxx n/a n/a \\w+ false
+EOF
 
-    ops = OptParseSimple.new(options).parse %w(-d 4)
-    #=> {:dxxx=>nil, :idxxx=>"4"} 
+ops = OptParseSimple.new(options).parse %w(-d 4)
+#=> {:dxxx=>nil, :idxxx=>"4"} 
 
 
 Another quick example:
 
-    require 'optparse-simple'
+require 'optparse-simple'
 
-    options =<<OPTIONS
-    username -u --username \\w+ true
-      invalid username
-      you must enter a username
-    password -p --pasword \\w+ true
-      invalid password
-      you must enter a password
-    keyword n/a n/a [\\w\+]+ true
-      invalid keyword
-      you must enter a keyword e.g. --keyword=ruby
-    OPTIONS
+options =<<OPTIONS
+username -u --username \\w+ true
+  invalid username
+  you must enter a username
+password -p --pasword \\w+ true
+  invalid password
+  you must enter a password
+keyword n/a n/a [\\w\+]+ true
+  invalid keyword
+  you must enter a keyword e.g. --keyword=ruby
+OPTIONS
 
-    args = %w(-u james -p secret fun)
-    OptParseSimple.new(options).parse %w(-u james -p secret fun)
-    #=> {:username=>"james", :password=>"secret", :keyword=>"fun"}
+args = %w(-u james -p secret fun)
+OptParseSimple.new(options).parse %w(-u james -p secret fun)
+#=> {:username=>"james", :password=>"secret", :keyword=>"fun"}
