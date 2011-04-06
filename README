@@ -1,34 +1,42 @@
 README
 
-last updated: 26-Oct-2010
+last updated: 06-Apr-2011
 
-*installation*
-sudo gem1.9.1 install table-formatter
+Installation
+============
 sudo gem1.9.1 install optparse-simple
 
-*recommended installation*
-sudo gem1.9.1 install polyrex
-
-
+Examples
+========
 Here's a quick start example:
 
-require 'optparse-simple'
-require 'polyrex'
+    require 'optparse-simple'
 
-polyrex = Polyrex.new('options/option[name,switch,alias,value,mandatory]/error[msg]')
+    options =<<EOF
+    dxxx -d --dxxx n/a false 
+    idxxx n/a n/a \\w+ false
+    EOF
 
-options =<<OPTIONS
-username -u --username \\w+ true
-  invalid username
-  you must enter a username
-password -p --pasword \\w+ true
-  invalid password
-  you must enter a password
-keyword   [\\w\+]+ true
-  invalid keyword
-  you must enter a keyword e.g. --keyword=ruby
-OPTIONS
+    ops = OptParseSimple.new(options).parse %w(-d 4)
+    #=> {:dxxx=>nil, :idxxx=>"4"} 
 
-args = %w(-u james -p secret fun)
-params = OptParseSimple.new(polyrex.parse(options).to_xml).parse(args)
-#=> {:username=>"james", :password=>"secret", :keyword=>"fun"}
+
+Another quick example:
+
+    require 'optparse-simple'
+
+    options =<<OPTIONS
+    username -u --username \\w+ true
+      invalid username
+      you must enter a username
+    password -p --pasword \\w+ true
+      invalid password
+      you must enter a password
+    keyword n/a n/a [\\w\+]+ true
+      invalid keyword
+      you must enter a keyword e.g. --keyword=ruby
+    OPTIONS
+
+    args = %w(-u james -p secret fun)
+    OptParseSimple.new(options).parse %w(-u james -p secret fun)
+    #=> {:username=>"james", :password=>"secret", :keyword=>"fun"}
