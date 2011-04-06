@@ -3,29 +3,24 @@
 # file: optparse-simple.rb
 
 require 'rexml/document'
+require 'polyrex'
 require 'table-formatter'
-include REXML
+
 
 class OptParseSimple
-
+  include REXML
+  
   def initialize(s)    
     super()
     
-    if s[/^https?:\/\//] then  # url
-      buffer = Kernel.open(s, 'UserAgent' => 'Polyrex-Reader').read
-    elsif s[/\</] # xml
-      buffer = s
-    else # local file
-      buffer = File.open(s,'r').read
-    end
-    
+    buffer = read(s)    
     @doc = Document.new(buffer)    
     
   end
   
   def parse(args)
     
-    @options = XPath.match(@doc.root, 'records/option[summary/switch!=""]')
+    @options = XPath.match(@doc.root, 'records/optionx[summary/switch!="n/a"]')
 
     switches = @options.map do |option| 
       switch = option.text('summary/switch')
@@ -47,7 +42,7 @@ class OptParseSimple
     args.flatten!
 
     # -- bind any loose value to their argument
-    xpath = 'records/option/summary[switch != "" and value != ""]'
+    xpath = 'records/optionx/summary[switch != "n/a" and value != "n/a"]'
     options = XPath.match(@doc.root, xpath)\
         .map {|node|  %w(switch alias)\
           .map{|x| node.text(x)}.compact}\
@@ -62,12 +57,12 @@ class OptParseSimple
 
     a1 = []
     a1 = options_match(@options[0], args).flatten.each_slice(2).map {|x| x if x[0]}.compact unless @options.empty?
-    options_remaining = XPath.match(@doc.root, 'records/option/summary[switch=""]/name/text()').map(&:to_s)
-    mandatory_remaining  = XPath.match(@doc.root, 'records/option/summary[switch="" and mandatory="true"]/name/text()').map(&:to_s)
+    options_remaining = XPath.match(@doc.root, 'records/optionx/summary[switch="n/a"]/name/text()').map(&:to_s)
+    mandatory_remaining  = XPath.match(@doc.root, 'records/optionx/summary[switch="n/a" and mandatory="true"]/name/text()').map(&:to_s)
     if mandatory_remaining.length > args.length then
        missing_arg = (mandatory_remaining - args).first
-       option = XPath.first(@doc.root, "records/option[summary/name='#{missing_arg}']")
-       raise option.text('records/error/summary/msg')
+       option = XPath.first(@doc.root, "records/optionx[summary/name='#{missing_arg}']")
+       raise option.text('records/errorx/summary/msg')
     end
     
     a2 = args.zip(options_remaining).map(&:reverse)
@@ -85,14 +80,14 @@ class OptParseSimple
   end
   
   def help    
-    a = XPath.match(@doc.root,  "records/option/summary[switch != '']").map do |summary|
+    a = XPath.match(@doc.root,  "records/optionx/summary[switch != 'n/a']").map do |summary|
       %w(switch alias).map {|x| summary.text x}
     end
     puts 'options:'
     puts TableFormatter.new(source: a, border: false).to_s
   end
 
-  private
+  private  
 
   def options_match(option, args)
 
@@ -103,9 +98,9 @@ class OptParseSimple
 
     if switch_matched then
 
-      value_pattern = option.text('summary/value')
+      value_pattern = option.text('summary/value')      
 
-      if value_pattern then
+      if value_pattern and value_pattern.downcase != 'n/a' then
 
         # check for equal sign
         value = switch_matched[/\=(#{value_pattern})/,1]
@@ -125,7 +120,7 @@ class OptParseSimple
             if value then
               args.delete_at(arg_index + 1)
             else
-              raise option.text('records/error[last()]/summary/msg')
+              raise option.text('records/errorx[last()]/summary/msg')
             end
           end
 
@@ -139,9 +134,10 @@ class OptParseSimple
 
       key = option.text('summary/name')
  
-    elsif option.text('summary/mandatory').downcase == 'true' then
+    elsif option.text('summary/mandatory').to_s.downcase == 'true' then
 
-      raise option.text('records/error/summary/msg')
+      raise option.text('records/errorx/summary/msg')
+    else
 
     end
 
@@ -150,6 +146,20 @@ class OptParseSimple
     next_pair = options_match(@options[0], args) if @options.length > 0
 
     [pair, next_pair]
+  end
+  
+  def read(s)
+    if s[/\s/] then
+      Polyrex.new('options/optionx[name,switch,alias,value,mandatory]/errorx[msg]').parse(s).to_xml
+    elsif s.is_a? Polyrex then
+      s.to_xml
+    elsif s[/^https?:\/\//] then  # url
+      Kernel.open(s, 'UserAgent' => 'Polyrex-Reader').read
+    elsif s[/\</] # xml
+      s
+    else # local file
+      File.open(s,'r').read
+    end    
   end
 
 end
