@@ -6,9 +6,10 @@ require 'rexml/document'
 require 'polyrex'
 require 'table-formatter'
 
-include REXML
-class OptParseSimple
 
+class OptParseSimple
+  include REXML
+  
   def initialize(s)    
     super()
     
