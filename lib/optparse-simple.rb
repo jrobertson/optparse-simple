@@ -50,12 +50,14 @@ class OptParseSimple
         .map {|node|  %w(switch alias)\
           .map{|x| node.text(x)}.compact}\
         .flatten
+    puts 'after flatten 2'
     args.map!.with_index do |x,i|
       next unless x or i < args.length - 1
       (x += '=' + args[i+1]; args[i+1] = nil) if options.include?(x)
       x
     end
-    args.compact!        
+    args.compact!
+
     # -- end of bind any loose value to their argument
 
     a1 = []
@@ -77,8 +79,9 @@ class OptParseSimple
     end
 
     a2 = args.zip(options_remaining).map(&:reverse)
+    
     if a2.map(&:first).all? then
-      @h = Hash[*(a1+a2).map{|x,y| [x.to_s.strip.to_sym, y]}.flatten]
+      @h = Hash[*(a1+a2).map{|x,y| [x.to_s.strip.to_sym, y || true]}.flatten]
     else
       invalid_option = a2.detect {|x,y| x.nil? }.last
       raise "invalid option: %s not recognised" % invalid_option
@@ -105,8 +108,10 @@ class OptParseSimple
   def options_match(option, args)
 
     switch, switch_alias = option.text('summary/switch'), option.text('summary/alias')
-    switch_pattern = switch_alias ? "(%s|%s)" % [switch, switch_alias] : switch 
+    switch_pattern = switch_alias ? "(%s|%s)" % [switch, switch_alias] : switch
+
     switch_matched, arg_index = args.each_with_index.detect {|x,j| x[/^#{switch_pattern}/]}
+
     key, value = nil
 
     if switch_matched then
@@ -164,11 +169,11 @@ class OptParseSimple
   end
   
   def readx(s)
-
-    r = if s[/\s/] then
-      Polyrex.new('options/optionx[name,switch,alias,value,mandatory]/errorx[msg]').parse(s).to_xml
-    elsif s.is_a? Polyrex then
+        
+    r = if s.is_a? Polyrex then
       s.to_xml
+    elsif s[/\s/] then
+      Polyrex.new('options/optionx[name,switch,alias,value,mandatory]/errorx[msg]').parse(s).to_xml
     elsif s[/^https?:\/\//] then  # url
       Kernel.open(s, 'UserAgent' => 'Polyrex-Reader').read
     elsif s[/\</] # xml
@@ -176,7 +181,7 @@ class OptParseSimple
     else # local file
       File.read s
     end    
-    
+
     r
   end
 
