@@ -10,14 +10,16 @@ require 'table-formatter'
 class OptParseSimple
   include REXML
 
-  def initialize(s)    
+  def initialize(s, debug: false)
+
+    @debug = debug
     super()
     buffer = readx(s)
 
     @doc = Document.new(buffer)
     #@doc = Rexle.new(buffer)
   end
-  
+
   def parse(args)
 
     @options = XPath.match(@doc.root, 'records/optionx[summary/switch!="n/a"]')
@@ -25,17 +27,21 @@ class OptParseSimple
 
     switches = @options.map do |option|
 
+      puts 'option: ' + option.to_s.inspect if @debug
+
       switch = option.text('summary/switch')
+      next if switch.nil?
+
       switch[0] == '-' ? switch : nil
-    end    
+    end
 
     switches.compact!
-    
+
     # split the argument switches if grouped e.g. -ltr
     args.map! do |arg|
 
       if arg[/^\-[a-zA-Z]+$/] and switches.grep(/#{arg}/).empty? then
-        arg[1..-1].scan(/./).map {|x| '-' + x} 
+        arg[1..-1].scan(/./).map {|x| '-' + x}
       else
         arg
       end
@@ -50,7 +56,7 @@ class OptParseSimple
         .map {|node|  %w(switch alias)\
           .map{|x| node.text(x)}.compact}\
         .flatten
-    puts 'after flatten 2'
+
     args.map!.with_index do |x,i|
       next unless x or i < args.length - 1
       (x += '=' + args[i+1]; args[i+1] = nil) if options.include?(x)
@@ -79,7 +85,7 @@ class OptParseSimple
     end
 
     a2 = args.zip(options_remaining).map(&:reverse)
-    
+
     if a2.map(&:first).all? then
       @h = Hash[*(a1+a2).map{|x,y| [x.to_s.strip.to_sym, y || true]}.flatten]
     else
@@ -93,8 +99,8 @@ class OptParseSimple
   def to_h()
     @h
   end
-  
-  def help    
+
+  def help
     a = XPath.match(@doc.root,  "records/optionx/summary[switch != 'n/a']").map do |summary|
     #a = @doc.root.xpath("records/optionx/summary[switch != 'n/a']").map do |summary|
       %w(switch alias).map {|x| summary.text x}
@@ -103,7 +109,7 @@ class OptParseSimple
     puts TableFormatter.new(source: a, border: false).to_s
   end
 
-  private  
+  private
 
   def options_match(option, args)
 
@@ -116,7 +122,7 @@ class OptParseSimple
 
     if switch_matched then
 
-      value_pattern = option.text('summary/value')      
+      value_pattern = option.text('summary/value')
 
       if value_pattern and value_pattern.downcase != 'n/a' then
 
@@ -126,7 +132,7 @@ class OptParseSimple
         # check the next arg
         if value.nil? and args.length > 0 then
 
-          next_arg = args[arg_index + 1] 
+          next_arg = args[arg_index + 1]
 
           # check to make sure it's not the next switch
           next_option = @options[1] if @options.length > 1
@@ -145,7 +151,7 @@ class OptParseSimple
 
         else
           args.delete_at(arg_index)
-        end      
+        end
 
       else
 
@@ -153,7 +159,7 @@ class OptParseSimple
       end
 
       key = option.text('summary/name')
- 
+
     elsif option.text('summary/mandatory').to_s.downcase == 'true' then
 
       raise option.text('records/errorx/summary/msg')
@@ -167,20 +173,33 @@ class OptParseSimple
 
     [pair, next_pair]
   end
-  
+
   def readx(s)
-        
+
     r = if s.is_a? Polyrex then
+
       s.to_xml
+
     elsif s[/\s/] then
-      Polyrex.new('options/optionx[name,switch,alias,value,mandatory]/errorx[msg]').parse(s).to_xml
+
+      puts 'before polyrex' if @debug
+      px = Polyrex.new('options/optionx[name,switch,alias,value,mandatory]/' +
+                       'errorx[msg]', delimiter: ' ')
+      px.parse(s).to_xml
+
     elsif s[/^https?:\/\//] then  # url
+
       Kernel.open(s, 'UserAgent' => 'Polyrex-Reader').read
+
     elsif s[/\</] # xml
+
       s
+
     else # local file
+
       File.read s
-    end    
+
+    end
 
     r
   end
